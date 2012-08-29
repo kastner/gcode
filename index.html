@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Backing Counts</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no">
+  <meta name = "viewport" content = "width = device-width">
+
+  <script src="jquery.min.js"></script> 
+  <script src="jquery-ui.min.js"></script> 
+  <script src="d3.v2.min.js"></script>
+
+  <style>
+    body {
+      margin: 10px;
+      padding: 10px;
+      background: #eee;
+      font: 13px/1.5em helvetica, ariel, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="control">
+    <a href="#">Sort by name</a>
+  </div>
+  <div id="g">
+  </div>
+  <script>
+    var mode = "value";
+    $("#control a").live("click", function (e) {
+      e.preventDefault();
+      var that = $(this);
+      that.html("Sort by " + mode);
+      if (mode == "value") {
+        mode = "name";
+        data = data.sort(function (a,b) { return (b[0].toLowerCase() < a[0].toLowerCase()) ? 1 : -1; });
+      } else {
+        mode = "value";
+        data = data.sort(function (a,b) { return b[1] - a[1]; });
+      }
+      d3.selectAll("rect")
+        .data(data)
+        .transition()
+        .duration(1000)
+        .attr("width", function (d) { return x(d[1]); });
+      d3.selectAll("text")
+        .data(data)
+        .transition()
+        .text("")
+        .transition()
+        .delay(1000)
+        .text(function (d, i) { return d[0] + " (" + d[1] + ")"; });
+    });
+
+    var data = [["Yancey Strickler", 685], ["Tieg Zaharia", 614], ["Michael McGregor", 366], ["Cindy Au", 327], ["Daniella Jaeger", 317], ["Justin Kazmark", 286], ["Elisabeth Holm", 281], ["Brett Camper", 248], ["Cassie Marketos", 247], ["Samuel Cole", 201], ["kendel ratley", 192], ["Andrew Cornett", 191], ["Perry Chen", 187], ["Aurora", 180], ["Cedric Howe", 167], ["Fred Benenson", 166], ["Charles Adler", 163], ["Stephanie Pereira", 158], ["Brandon Williams", 146], ["Nicole He", 124], ["Jared", 119], ["Cooper Troxell", 110], ["Tomasz Werner", 101], ["Katherine Pan", 98], ["Andy Baio", 91], ["Emily Reese", 84], ["Meaghan O'Connell", 68], ["Lance Ivy", 67], ["Callan Lamb", 67], ["alex cox", 67], ["Zack Sears", 60], ["Andrew Boyajian", 59], ["Aaron Suggs", 58], ["Dan Drabik", 54], ["Jed Meade", 52], ["Jessica Harllee", 51], ["Erik Kastner", 25], ["Bridget Best", 23], ["Bethany Sumner", 23], ["Christopher Muccioli", 18], ["niina", 7], ["Shannon Ferguson", 0]];
+
+  var width = 600;
+  var height = data.length * 20;
+
+  var val = function (d) { return d[1]; }
+  var chart = d3.select("#g").append("svg").attr("width", width).attr("height", height);
+
+  var x = d3.scale.linear()
+    .domain([d3.min(data, val), d3.max(data, val)])
+    .range(["1px", width + 'px']);
+
+  var y = d3.scale.ordinal()
+    .domain(data.map(val))
+    .rangeBands([0, height], 0.14);
+
+  chart.selectAll('rect').data(data)
+    .enter().append('rect')
+    .attr("stroke", "none").attr("fill", "rgb(7, 130, 180)")
+    .attr("x", 0)
+    .attr("y", function (d, i) { return i * 20; })
+    .attr("width", function (d) { return x(d[1]); })
+    .attr("height", 18)
+
+  chart.selectAll('text').data(data)
+    .enter().append('text')
+    .attr('x', 4)
+    .attr("y", function (d, i) { return i * 20 + 10; })
+    .attr('dx', -3)
+    .attr('dy', "0.35em")
+    .text(function (d, i) { return d[0] + " (" + d[1] + ")"; });
+  </script>
+</body>
+</html>
