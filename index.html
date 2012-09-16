@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Backing Counts</title>
+  <title>GCode Thingie!</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="format-detection" content="telephone=no">
   <meta name = "viewport" content = "width = device-width">
@@ -16,73 +16,228 @@
       padding: 10px;
       background: #eee;
       font: 13px/1.5em helvetica, ariel, sans-serif;
+      text-align: center;
+      padding: 10px;
+      -webkit-perspective: 800px;
+    }
+
+    #container {
+      width: 500px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      min-height: 400px;
+      text-align: center;
+      padding: 10px;
+      -webkit-transform-style: preserve-3d;
+    }
+
+    #gcode-input {
+      height: 200px;
+      width: 400px;
+      margin: 0 auto;
+    }
+
+    #debug {
+      width: 400px;
+      height: 50px;
+      margin: 0 auto;
+      color: #999;
+    }
+
+    #stage {
+      position: relative;
+      background: #f0f0f0;
+      margin: 0 auto;
+      border-radius: 20px;
+      width: 400px;
+      height: 400px;
+      -webkit-transform-origin: 100px;
+      -webkit-transform: rotateX(70deg);
+    }
+
+    #draw-bed {
+      /*-webkit-transform: rotateX(70deg);*/
+      background: #aaa;
+      width: 400px;
+      height: 400px;
+      /*position: absolute;*/
+      margin-top: 80px;
+      z-index: -100;
+    }
+
+    #print-head {
+      z-index: 10;
+      border: 1px solid black;
+      width: 10px;
+      height: 10px;
+      background: black;
+      /*-webkit-transform: translateY(-200px);*/
+      -webkit-transform: translateX(20px) translateZ(20px);
+      /*position: absolute;*/
+    } 
+
+    label {
+      display: block;
     }
   </style>
+
+  <script>
+    var drawInfo = {};
+
+    $(function () {
+      drawInfo = {
+        dimsX: document.getElementById("draw-bed").clientWidth * 0.8,
+        dimsY: document.getElementById("draw-bed").clientHeight * 0.8,
+        dimsZ: 100
+      };
+    })
+
+    var width = $("#draw-bed").width();
+    var height = $("#draw-bed").height();
+
+    function scaleValue(val, axis) {
+      return drawInfo["scale" + axis] / drawInfo["dims" + axis];
+    }
+
+    function parseCommand(line) {
+      line = line.replace(/;.*$/, '');
+      line = line.replace(/\s+$/, '');
+      parts = line.split(/\s+/);
+      return {
+        ins: parts[0],
+        params: parts.slice(1, parts.length)
+      };
+    }
+
+    function M92 (p) {
+      var dim = p.substr(0, 1);
+      var val = p.slice(1, p.length);
+      drawInfo["size" + dim] = Number(val);
+      return true;
+    }
+
+    function dispatch (cmd) {
+      switch (cmd.ins) {
+        case ("M92"): // sizing command
+          cmd.params.forEach(M92);
+          return true;
+        case ("G1"): // move / extrude
+          return true;
+        default:
+          // console.log("Unhandled for now:" + cmd.ins);
+      }
+      return false;
+    }
+
+    $(function () {
+      $("#draw-it").live("click", function drawClick (e) {
+        var commands = $("#gcode-input").val();
+        commands = commands.split("\n");
+        commands.forEach(function cmdEach (line) {
+          var cmd = parseCommand(line);
+          if (dispatch(cmd)) {
+            $("#debug").val($("#debug").val() + cmd.ins + ": " + cmd.params.join(", ") + "\n");
+          }
+        });
+        console.log(drawInfo);
+      });
+    });
+  </script>
 </head>
 <body>
-  <div id="control">
-    <a href="#">Sort by name</a>
+  <div id="container">
+    <div id="stage">
+      <div id="draw-bed">
+        <div id="print-head"></div>
+      </div>
+    </div>
+
+    <div>
+      <button id="draw-it">Draw it</button>
+    </div>
+
+    <label for="gcode-input">GCode input:</label>
+    <textarea id="debug"></textarea>
+    <textarea id="gcode-input">
+M190 S89 ; wait for bed temperature to be reached
+M104 S229 ; set temperature
+M92 X64.8592;
+M92 Y64.8592;
+M92 Z2387.0719;
+M109 S229 ; wait for temperature to be reached
+G90 ; use absolute coordinates
+G21 ; set units to millimeters
+G92 E0
+M82 ; use absolute distances for extrusion
+G1 Z0.400 F7800.000
+G1 X71.284 Y65.911
+G1 F1800.000 E1.00000
+G1 X74.824 Y63.211 F540.000 E1.18533
+G1 X75.554 Y62.771 E1.22081
+G1 X75.814 Y62.641 E1.23291
+G1 X76.334 Y62.421 E1.25642
+    </textarea>
   </div>
-  <div id="g">
-  </div>
+
   <script>
-    var mode = "value";
-    $("#control a").live("click", function (e) {
-      e.preventDefault();
-      var that = $(this);
-      that.html("Sort by " + mode);
-      if (mode == "value") {
-        mode = "name";
-        data = data.sort(function (a,b) { return (b[0].toLowerCase() < a[0].toLowerCase()) ? 1 : -1; });
-      } else {
-        mode = "value";
-        data = data.sort(function (a,b) { return b[1] - a[1]; });
-      }
-      d3.selectAll("rect")
-        .data(data)
-        .transition()
-        .duration(1000)
-        .attr("width", function (d) { return x(d[1]); });
-      d3.selectAll("text")
-        .data(data)
-        .transition()
-        .text("")
-        .transition()
-        .delay(1000)
-        .text(function (d, i) { return d[0] + " (" + d[1] + ")"; });
-    });
+  //   var mode = "value";
+  //   $("#control a").live("click", function (e) {
+  //     e.preventDefault();
+  //     var that = $(this);
+  //     that.html("Sort by " + mode);
+  //     if (mode == "value") {
+  //       mode = "name";
+  //       data = data.sort(function (a,b) { return (b[0].toLowerCase() < a[0].toLowerCase()) ? 1 : -1; });
+  //     } else {
+  //       mode = "value";
+  //       data = data.sort(function (a,b) { return b[1] - a[1]; });
+  //     }
+  //     d3.selectAll("rect")
+  //       .data(data)
+  //       .transition()
+  //       .duration(1000)
+  //       .attr("width", function (d) { return x(d[1]); });
+  //     d3.selectAll("text")
+  //       .data(data)
+  //       .transition()
+  //       .text("")
+  //       .transition()
+  //       .delay(1000)
+  //       .text(function (d, i) { return d[0] + " (" + d[1] + ")"; });
+  //   });
 
-    var data = [["Yancey Strickler", 685], ["Tieg Zaharia", 614], ["Michael McGregor", 366], ["Cindy Au", 327], ["Daniella Jaeger", 317], ["Justin Kazmark", 286], ["Elisabeth Holm", 281], ["Brett Camper", 248], ["Cassie Marketos", 247], ["Samuel Cole", 201], ["kendel ratley", 192], ["Andrew Cornett", 191], ["Perry Chen", 187], ["Aurora", 180], ["Cedric Howe", 167], ["Fred Benenson", 166], ["Charles Adler", 163], ["Stephanie Pereira", 158], ["Brandon Williams", 146], ["Nicole He", 124], ["Jared", 119], ["Cooper Troxell", 110], ["Tomasz Werner", 101], ["Katherine Pan", 98], ["Andy Baio", 91], ["Emily Reese", 84], ["Meaghan O'Connell", 68], ["Lance Ivy", 67], ["Callan Lamb", 67], ["alex cox", 67], ["Zack Sears", 60], ["Andrew Boyajian", 59], ["Aaron Suggs", 58], ["Dan Drabik", 54], ["Jed Meade", 52], ["Jessica Harllee", 51], ["Erik Kastner", 25], ["Bridget Best", 23], ["Bethany Sumner", 23], ["Christopher Muccioli", 18], ["niina", 7], ["Shannon Ferguson", 0]];
+  //   var data = [["Yancey Strickler", 685], ["Tieg Zaharia", 614], ["Michael McGregor", 366], ["Cindy Au", 327], ["Daniella Jaeger", 317], ["Justin Kazmark", 286], ["Elisabeth Holm", 281], ["Brett Camper", 248], ["Cassie Marketos", 247], ["Samuel Cole", 201], ["kendel ratley", 192], ["Andrew Cornett", 191], ["Perry Chen", 187], ["Aurora", 180], ["Cedric Howe", 167], ["Fred Benenson", 166], ["Charles Adler", 163], ["Stephanie Pereira", 158], ["Brandon Williams", 146], ["Nicole He", 124], ["Jared", 119], ["Cooper Troxell", 110], ["Tomasz Werner", 101], ["Katherine Pan", 98], ["Andy Baio", 91], ["Emily Reese", 84], ["Meaghan O'Connell", 68], ["Lance Ivy", 67], ["Callan Lamb", 67], ["alex cox", 67], ["Zack Sears", 60], ["Andrew Boyajian", 59], ["Aaron Suggs", 58], ["Dan Drabik", 54], ["Jed Meade", 52], ["Jessica Harllee", 51], ["Erik Kastner", 25], ["Bridget Best", 23], ["Bethany Sumner", 23], ["Christopher Muccioli", 18], ["niina", 7], ["Shannon Ferguson", 0]];
 
-  var width = 600;
-  var height = data.length * 20;
+  // var width = 600;
+  // var height = data.length * 20;
 
-  var val = function (d) { return d[1]; }
-  var chart = d3.select("#g").append("svg").attr("width", width).attr("height", height);
+  // var val = function (d) { return d[1]; }
+  // var chart = d3.select("#g").append("svg").attr("width", width).attr("height", height);
 
-  var x = d3.scale.linear()
-    .domain([d3.min(data, val), d3.max(data, val)])
-    .range(["1px", width + 'px']);
+  // var x = d3.scale.linear()
+  //   .domain([d3.min(data, val), d3.max(data, val)])
+  //   .range(["1px", width + 'px']);
 
-  var y = d3.scale.ordinal()
-    .domain(data.map(val))
-    .rangeBands([0, height], 0.14);
+  // var y = d3.scale.ordinal()
+  //   .domain(data.map(val))
+  //   .rangeBands([0, height], 0.14);
 
-  chart.selectAll('rect').data(data)
-    .enter().append('rect')
-    .attr("stroke", "none").attr("fill", "rgb(7, 130, 180)")
-    .attr("x", 0)
-    .attr("y", function (d, i) { return i * 20; })
-    .attr("width", function (d) { return x(d[1]); })
-    .attr("height", 18)
+  // chart.selectAll('rect').data(data)
+  //   .enter().append('rect')
+  //   .attr("stroke", "none").attr("fill", "rgb(7, 130, 180)")
+  //   .attr("x", 0)
+  //   .attr("y", function (d, i) { return i * 20; })
+  //   .attr("width", function (d) { return x(d[1]); })
+  //   .attr("height", 18)
 
-  chart.selectAll('text').data(data)
-    .enter().append('text')
-    .attr('x', 4)
-    .attr("y", function (d, i) { return i * 20 + 10; })
-    .attr('dx', -3)
-    .attr('dy', "0.35em")
-    .text(function (d, i) { return d[0] + " (" + d[1] + ")"; });
+  // chart.selectAll('text').data(data)
+  //   .enter().append('text')
+  //   .attr('x', 4)
+  //   .attr("y", function (d, i) { return i * 20 + 10; })
+  //   .attr('dx', -3)
+  //   .attr('dy', "0.35em")
+  //   .text(function (d, i) { return d[0] + " (" + d[1] + ")"; });
   </script>
 </body>
 </html>
